@@ -1,3 +1,4 @@
+[![CI](https://github.com/donovanmessager0-tech/dropzone_starter/actions/workflows/ci.yml/badge.svg)](https://github.com/donovanmessager0-tech/dropzone_starter/actions/workflows/ci.yml)
 # DropZone
 
 Plateforme de **drops** de sneakers en édition limitée : un drop met en vente un nombre fixe de paires à une heure précise, et les acheteurs commandent jusqu'à épuisement du stock.
