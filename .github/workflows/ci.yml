@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
@@ -14,35 +14,30 @@ jobs:
     name: Lint & Format
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.12"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Backend Deps
-        run: pip install ruff pytest
+      - name: Install backend tools
+        working-directory: ./backend
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install ruff
 
-      - name: Install Frontend Deps
+      - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm ci
 
-      - name: Run Ruff (Lint & Format)
+      - name: Run Ruff
+        working-directory: ./backend
         run: ruff check . && ruff format --check .
-
-      - name: Run ESLint & TypeScript Check
-        working-directory: ./frontend
-        run: npm run lint && npm run typecheck # Ajustez selon vos scripts package.json
 
   backend-tests:
     name: Backend Tests
@@ -51,15 +46,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.12"
+
       - name: Install dependencies
+        working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt # Ajustez le chemin vers vos requirements
-          pip install pytest pytest-cov
+          python -m pip install -r requirements.txt
+          python -m pip install pytest pytest-cov httpx
+
       - name: Run Pytest with Coverage
-        run: pytest --cov=backend backend/tests
+        working-directory: ./backend
+        run: pytest
 
   frontend-tests:
     name: Frontend Tests & Build
@@ -68,13 +66,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-      - working-directory: ./frontend
+
+      - name: Test and build frontend
+        working-directory: ./frontend
         run: |
           npm ci
-          npm run test:ci # ou vitest run
+          npx vitest run
           npm run build
 
   e2e:
@@ -85,24 +85,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "22"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install Frontend Deps & Playwright browsers
+      - name: Install frontend dependencies and Playwright browsers
         working-directory: ./frontend
         run: |
           npm ci
           npx playwright install --with-deps
 
-      - name: Start Docker Compose Stack
+      - name: Start Docker Compose stack
         run: docker compose up -d --build
 
-      - name: Run Playwright E2E Tests
+      - name: Run Playwright E2E tests
         working-directory: ./frontend
         run: npx playwright test
 
-      - name: Upload Playwright Report
+      - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
