@@ -11,7 +11,7 @@ from app.schemas import DropIn, DropOut, OrderOut
 router = APIRouter(prefix="/drops", tags=["drops"])
 
 
-@router.get("")
+@router.get("", response_model=list[DropOut])
 def list_drops(
     drop_status: DropStatus | None = Query(default=None, alias="status"),
     session: Session = Depends(get_session),
@@ -19,7 +19,7 @@ def list_drops(
     return services.list_drops(session, drop_status)
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=DropOut)
 def create_drop(
     data: DropIn, response: Response, session: Session = Depends(get_session)
 ) -> DropOut:
@@ -28,7 +28,11 @@ def create_drop(
     return drop
 
 
-@router.get("/{drop_id}", responses={404: {"description": "Drop not found"}})
+@router.get(
+    "/{drop_id}",
+    responses={404: {"description": "Drop not found"}},
+    response_model=DropOut,
+)
 def get_drop(drop_id: int, session: Session = Depends(get_session)) -> DropOut:
     try:
         return services.get_drop(session, drop_id)
@@ -39,6 +43,7 @@ def get_drop(drop_id: int, session: Session = Depends(get_session)) -> DropOut:
 @router.post(
     "/{drop_id}/orders",
     status_code=status.HTTP_201_CREATED,
+    response_model=OrderOut,
     responses={
         404: {"description": "Drop not found"},
         409: {"description": "Drop not open yet, or sold out"},
