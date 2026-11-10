@@ -23,6 +23,8 @@ class DropIn(BaseModel):
 
 
 class DropOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     product: str
     description: str
@@ -34,6 +36,8 @@ class DropOut(BaseModel):
 
 
 class OrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     drop_id: int
     created_at: datetime
