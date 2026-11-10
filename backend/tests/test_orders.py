@@ -1,31 +1,43 @@
-# backend/tests/test_orders.py
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
-def test_order_decrements_stock_and_marks_sold_out(client, make_drop):
-    # Crée un drop avec 1 seul article en stock
-    drop = make_drop(stock=1, start_time=datetime.now(timezone.utc) - timedelta(hours=1))
-    
-    response = client.post(f"/api/drops/{drop['id']}/orders")
-    assert response.status_code == 200
+from fastapi.testclient import TestClient
+
+from tests.conftest import iso
+
+
+def test_order_decrements_stock_and_marks_sold_out(
+    client: TestClient, make_drop
+) -> None:
+    drop = make_drop(stock=1)
+
+    response = client.post(f"/drops/{drop['id']}/orders")
+
+    assert response.status_code == 201
     data = response.json()
-    assert data["remaining"] == 0
-    assert data["status"] == "sold_out"
+    assert data["drop"]["remaining"] == 0
+    assert data["drop"]["status"] == "sold_out"
+    assert isinstance(data["created_at"], str)
 
-def test_order_refused_when_sold_out(client, make_drop):
-    drop = make_drop(stock=0, start_time=datetime.now(timezone.utc) - timedelta(hours=1))
-    
-    response = client.post(f"/api/drops/{drop['id']}/orders")
-    assert response.status_code == 400
 
-def test_order_refused_when_not_yet_open(client, make_drop):
-    drop = make_drop(stock=5, start_time=datetime.now(timezone.utc) - timedelta(hours=1)) # Erreur, on veut futur
-    # Mettons un start_time dans le futur
-    # (Ajustez selon votre fixture make_drop si besoin de passer le start_time explicitement)
-    future_drop = make_drop(stock=5, start_time=datetime.now(timezone.utc) + timedelta(hours=1))
-    
-    response = client.post(f"/api/drops/{future_drop['id']}/orders")
-    assert response.status_code == 400
+def test_order_refused_when_sold_out(client: TestClient, make_drop) -> None:
+    drop = make_drop(stock=1)
+    first = client.post(f"/drops/{drop['id']}/orders")
+    assert first.status_code == 201
 
-def test_order_unknown_drop(client):
-    response = client.post("/api/drops/999999/orders")
+    second = client.post(f"/drops/{drop['id']}/orders")
+    assert second.status_code == 409
+
+
+def test_order_refused_when_not_yet_open(client: TestClient, make_drop) -> None:
+    future_opens_at = iso(datetime.now(UTC) + timedelta(hours=1))
+    drop = make_drop(stock=5, opens_at=future_opens_at)
+
+    response = client.post(f"/drops/{drop['id']}/orders")
+
+    assert response.status_code == 409
+
+
+def test_order_unknown_drop(client: TestClient) -> None:
+    response = client.post("/drops/999999/orders")
+
     assert response.status_code == 404
